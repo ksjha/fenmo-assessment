@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(DB_PATH=:memory: node src/index.js)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(curl -s -X POST http://localhost:3001/api/expenses -H \"Content-Type: application/json\" -H \"Idempotency-Key: smoke-test-1\" -d '{\"amount\":\"199.50\",\"category\":\"Food\",\"description\":\"Lunch\",\"date\":\"2026-04-20\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/expenses -H \"Content-Type: application/json\" -H \"Idempotency-Key: smoke-test-1\" -d '{\"amount\":\"9999.99\",\"category\":\"Cheats\",\"description\":\"nope\",\"date\":\"2026-04-20\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/expenses -H \"Content-Type: application/json\" -H \"Idempotency-Key: smoke-test-2\" -d '{\"amount\":\"0.10\",\"category\":\"Food\",\"description\":\"a\",\"date\":\"2026-04-22\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/expenses -H \"Content-Type: application/json\" -H \"Idempotency-Key: smoke-test-3\" -d '{\"amount\":\"0.20\",\"category\":\"Food\",\"description\":\"b\",\"date\":\"2026-04-22\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s http://localhost:5173/api/health)"
+    ]
+  }
+}

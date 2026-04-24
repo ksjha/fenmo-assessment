@@ -1,0 +1,25 @@
+{
+  "name": "fenmo-assessment-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Expense Tracker API (Express + node:sqlite)",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.8"
+  }
+}

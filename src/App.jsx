@@ -1,122 +1,83 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useMemo, useState } from 'react';
+import ExpenseForm from './components/ExpenseForm.jsx';
+import ExpenseList from './components/ExpenseList.jsx';
+import Filters from './components/Filters.jsx';
+import Summary from './components/Summary.jsx';
+import { useExpenses } from './hooks/useExpenses.js';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Derive the filtered view + its total from the single unfiltered fetch.
+// Summing in integer MINOR units keeps the total exact (no float drift);
+// we only format to a string at the end.
+function deriveView(data, selectedCategory) {
+  if (!data) return { expenses: null, total: null, byCategory: null };
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  const all = data.data;
+  const expenses = selectedCategory
+    ? all.filter((e) => e.category === selectedCategory)
+    : all;
 
-      <div className="ticks"></div>
+  let totalMinor = 0;
+  for (const e of expenses) totalMinor += e.amount_minor;
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  // by_category breakdown is shown only when viewing all categories. With a
+  // filter applied, a one-row breakdown would be noise.
+  const byCategory = selectedCategory ? null : data.by_category;
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  return {
+    expenses,
+    total: { amount_minor: totalMinor, count: expenses.length },
+    byCategory,
+  };
 }
 
-export default App
+export default function App() {
+  const [category, setCategory] = useState(null);
+  const { data, loading, error, refetch } = useExpenses();
+
+  const categories = useMemo(() => {
+    const set = new Set();
+    for (const e of data?.data ?? []) set.add(e.category);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const { expenses, total, byCategory } = useMemo(
+    () => deriveView(data, category),
+    [data, category],
+  );
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <h1>Expense Tracker</h1>
+        <p className="tagline">Record and review your expenses.</p>
+      </header>
+
+      <main className="app-main">
+        <aside className="sidebar">
+          <ExpenseForm onCreated={refetch} />
+        </aside>
+
+        <section className="content">
+          <div className="content-controls">
+            <Filters
+              categories={categories}
+              selected={category}
+              onChange={setCategory}
+              onClear={() => setCategory(null)}
+            />
+          </div>
+
+          <Summary total={total} byCategory={byCategory} />
+
+          <ExpenseList
+            expenses={expenses}
+            loading={loading}
+            error={error}
+            onRetry={refetch}
+          />
+        </section>
+      </main>
+    </div>
+  );
+}
