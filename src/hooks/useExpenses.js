@@ -14,16 +14,22 @@ export function useExpenses() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const requestIdRef = useRef(0);
+  const controllerRef = useRef(null);
 
-  const fetch = useCallback(async () => {
-    const reqId = ++requestIdRef.current;
+  const fetch = useCallback(async ({ showLoading = true } = {}) => {
+    controllerRef.current?.abort();
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
+    controllerRef.current = controller;
+    const reqId = ++requestIdRef.current;
+    if (showLoading) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await listExpenses({ signal: controller.signal });
       if (reqId === requestIdRef.current) {
         setData(result);
+        setError(null);
         setLoading(false);
       }
     } catch (err) {
@@ -34,11 +40,23 @@ export function useExpenses() {
         }));
         setLoading(false);
       }
+    } finally {
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
     }
-    return () => controller.abort();
   }, []);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      void fetch({ showLoading: false });
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      controllerRef.current?.abort();
+    };
+  }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
 }

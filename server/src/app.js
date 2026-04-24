@@ -1,8 +1,9 @@
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import { createExpensesRouter } from './routes/expenses.js';
 
-export function createApp(db) {
+export function createApp(db, { frontendDir } = {}) {
   const app = express();
 
   // In production the frontend is served behind the same origin (or via the
@@ -16,6 +17,20 @@ export function createApp(db) {
 
   app.use('/api/expenses', createExpensesRouter(db));
 
+  if (frontendDir) {
+    app.use(express.static(frontendDir));
+
+    app.get('*', (req, res, next) => {
+      if (req.path === '/api' || req.path.startsWith('/api/')) {
+        return next();
+      }
+      if (path.extname(req.path)) {
+        return next();
+      }
+      return res.sendFile(path.join(frontendDir, 'index.html'));
+    });
+  }
+
   // Consistent error envelope.
   app.use((req, res) => {
     res.status(404).json({
@@ -25,7 +40,8 @@ export function createApp(db) {
 
   // Final safety net: log and hide internals. Any thrown error from a route
   // lands here instead of leaking a stack trace to the client.
-  app.use((err, _req, res, _next) => {
+  app.use((err, _req, res, next) => {
+    void next;
     console.error('[server error]', err);
     res.status(500).json({
       error: { code: 'internal_error', message: 'Something went wrong' },

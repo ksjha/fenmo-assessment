@@ -29,6 +29,21 @@ npm run dev
 
 Open <http://localhost:5173>. The Vite dev server proxies `/api/*` to `http://localhost:3001`, so the frontend always talks to one origin.
 
+### Production-style local run
+
+The Express server will serve the built frontend automatically if `dist/` exists:
+
+```bash
+# build the frontend once
+npm run build
+
+# then start the backend; it now serves both the API and the UI
+npm run start --prefix server
+# or simply: npm start
+```
+
+Open <http://localhost:3001>.
+
 ### Tests
 
 ```bash
@@ -36,6 +51,44 @@ npm test --prefix server
 ```
 
 16 integration tests covering create/list/filter/sort, money parsing edge cases, idempotency replay, concurrent-retry races, and the classic `0.1 + 0.2` float trap.
+
+---
+
+## Deploying to Render or Railway
+
+This repo now includes a root `Dockerfile` so the app can be deployed as a **single service**:
+
+- Vite builds the frontend into `dist/`
+- Express serves the built frontend and the `/api/*` routes from one process
+- SQLite stays local to the container, so you **must** attach a persistent disk / volume or the data will reset on redeploy
+
+### Render
+
+1. Create a new **Web Service** from the GitHub repo.
+2. Let Render detect the root `Dockerfile` (or set the service type to Docker).
+3. Add a **Persistent Disk** and mount it somewhere inside the container, for example `/app/data`.
+4. Set `DB_PATH=/app/data/expenses.db`.
+5. Optional but recommended: set the health check path to `/api/health`.
+
+After deploy, the app will be available from Render's public URL and the API will be served from the same origin.
+
+### Railway
+
+1. Create a new project from the GitHub repo.
+2. Railway will use the root `Dockerfile`.
+3. Add a **Volume** and mount it to a path such as `/data`.
+4. Set `DB_PATH=/data/expenses.db`.
+5. Generate a public domain for the service.
+
+### Why the volume matters
+
+SQLite writes to a file on disk. Without a persistent disk/volume:
+
+- a restart can wipe the database
+- a redeploy can wipe the database
+- your app will appear to "lose" expenses between deploys
+
+If you later want multiple replicas or zero-downtime horizontal scaling, move the database to Postgres. For this assessment-sized app, one service + one mounted volume is the simplest production setup.
 
 ---
 
@@ -133,7 +186,7 @@ The form does client-side validation for snappy feedback, but any 400 from the s
 - **Single currency (INR).** Hardcoded in the display layer. Multi-currency would require a currency column and an FX story that's out of scope here.
 - **Idempotency keys don't expire.** A real deployment would TTL them (e.g. 24h) to cap table growth.
 - **No frontend tests.** Backend is where the correctness risks concentrate (money, idempotency). Testing the form's happy path through the DOM would add boilerplate without catching a bug class the server tests don't already cover.
-- **No deploy link.** I haven't wired a hosted deploy in this pass. The project runs locally with the two `npm` commands above; a deployment target (Render, Fly, Railway) would mount a persistent volume for `server/data/expenses.db`.
+- **SQLite needs a persistent volume in production.** The app now has Docker-based Render/Railway deployment support, but it still relies on a single writable disk. That's fine for a small single-instance app; scaling out would mean moving to Postgres.
 
 ## What I intentionally did NOT do
 

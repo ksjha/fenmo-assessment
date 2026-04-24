@@ -1,0 +1,9 @@
+.git
+.gitignore
+.claude
+dist
+node_modules
+server/node_modules
+server/data
+npm-debug.log
+server/npm-debug.log
